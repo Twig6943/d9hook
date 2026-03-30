@@ -11,14 +11,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
-      - name: Install Visual Studio Build Tools
+      - name: Install Visual Studio Build Tools and DirectX SDK
         shell: pwsh
         run: |
           choco install visualstudio2026buildtools `
             --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" `
             -y
-          choco install cmake -y
-          
+          choco install directx-sdk -y
+
+      - name: Set DirectX SDK environment variables
+        shell: pwsh
+        run: |
+          echo "DXSDK_DIR=C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\" >> $GITHUB_ENV
+          echo "INCLUDE=C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;$env:INCLUDE" >> $GITHUB_ENV
+          echo "LIB=C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;$env:LIB" >> $GITHUB_ENV
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -31,10 +38,9 @@ jobs:
             /p:Platform=x86 ^
             /m
 
-
       - name: Upload artifact/s
         uses: actions/upload-artifact@v6
         with:
           name: DLL
           path: |
-            Build/Release/*.dll
+            Win32/Release/*.dll
