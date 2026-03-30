@@ -1,0 +1,40 @@
+name: Build DLL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Install Visual Studio Build Tools
+        shell: pwsh
+        run: |
+          choco install visualstudio2026buildtools `
+            --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" `
+            -y
+          choco install cmake -y
+          
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Solution x86
+        shell: cmd
+        run: |
+          REM Build using MSBuild for Win32 (x86)
+          msbuild D3D9Hook.sln ^
+            /p:Configuration=Release ^
+            /p:Platform=x86 ^
+            /m
+
+
+      - name: Upload artifact/s
+        uses: actions/upload-artifact@v6
+        with:
+          name: DLL
+          path: |
+            Build/Release/*.dll
