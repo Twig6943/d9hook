@@ -2,7 +2,7 @@
 #include <string>
 
 // disable unfixable warnings (you might need to uncomment this if needed)
-#pragma warning(push, 0)        
+#pragma warning(push, 0)
 #include <d3d9.h>
 #include <d3dx9.h>
 #include <detours.h>
@@ -108,7 +108,8 @@ void DrawMenu()
     ImGui::Begin("Faces Menu", &Globals::isMenuToggled);
     static bool isChamsToggled = false;
     ImGui::Checkbox("Chams", &isChamsToggled);
-    // --------      
+    // --------
+    ImGui::End();
 }
 
 // -------- DIRECTX9 -------
@@ -116,12 +117,12 @@ bool GetD3D9Device(void** pTable, size_t size)
 {
     if (!pTable)
         return false;
-    
+
     // Create a D3D Variable and get the sdk version
     Globals::PD3D = Direct3DCreate9(D3D_SDK_VERSION);
-    
+
     // Make sure that the pointer is valid
-    if (!Globals::PD3D) 
+    if (!Globals::PD3D)
         return false;
 
     D3DPRESENT_PARAMETERS d3dpp = {};
@@ -175,7 +176,7 @@ HRESULT __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
     {
         // Call the original game message handling fnc
         Globals::WNDPROC_ORIGNAL = (WNDPROC)SetWindowLongPtr(Globals::WINDOW, GWLP_WNDPROC, (LONG_PTR)WndProc);
-      
+
         // Draw the ImGui Menu
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -184,10 +185,10 @@ HRESULT __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
         ImGui::StyleColorsDark();
         ImGui_ImplWin32_Init(Globals::WINDOW);
         ImGui_ImplDX9_Init(pDevice);
-        
+
         // Init to true to prevent spamming the message box
         Globals::isInit = true;
-    } 
+    }
 
     if (GetAsyncKeyState(VK_INSERT) & 1)
     {
@@ -212,12 +213,16 @@ HRESULT __stdcall hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 
 DWORD WINAPI InitHook(PVOID base)
 {
+	// Sleep for a while
+    while (!GetProcessWindow())
+        Sleep(100);
+
     // store a VTable of 119 functions
     void* d3d9Device[119];
-        
+
     if (GetD3D9Device(d3d9Device, sizeof(d3d9Device)))
     {
-        // Hook the endScene 
+        // Hook the endScene
         Globals::oEndScene = (EndScene)d3d9Device[42];
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
@@ -238,7 +243,7 @@ DWORD WINAPI InitHook(PVOID base)
 
         CleanUpDeviceD3D();
     }
-       
+
     FreeLibraryAndExitThread(static_cast<HMODULE>(base), 1);
 }
 
@@ -257,4 +262,3 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
 
     return TRUE;
 }
-
