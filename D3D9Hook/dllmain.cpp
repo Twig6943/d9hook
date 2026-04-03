@@ -118,38 +118,66 @@ bool GetD3D9Device(void** pTable, size_t size)
     if (!pTable)
         return false;
 
+    // a
+    WNDCLASSEXA wc = {};
+    wc.cbSize        = sizeof(wc);
+    wc.lpfnWndProc   = DefWindowProcA;
+    wc.hInstance     = GetModuleHandleA(nullptr);
+    wc.lpszClassName = "D3D9HookDummy";
+    RegisterClassExA(&wc);
+
+    HWND dummyWindow = CreateWindowExA(
+        0, "D3D9HookDummy", "D3D9Hook",
+        WS_OVERLAPPED, 0, 0, 100, 100,
+        nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
+
+    if (!dummyWindow)
+    {
+        UnregisterClassA("D3D9HookDummy", GetModuleHandleA(nullptr));
+        return false;
+    }
+
     // Create a D3D Variable and get the sdk version
     Globals::PD3D = Direct3DCreate9(D3D_SDK_VERSION);
 
     // Make sure that the pointer is valid
     if (!Globals::PD3D)
+    {
+        DestroyWindow(dummyWindow);
+        UnregisterClassA("D3D9HookDummy", GetModuleHandleA(nullptr));
         return false;
+    }
 
     D3DPRESENT_PARAMETERS d3dpp = {};
-    d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    // The game window we want to render on
-    d3dpp.hDeviceWindow = GetProcessWindow();
-    d3dpp.Windowed = true;
+    d3dpp.SwapEffect    = D3DSWAPEFFECT_DISCARD;
+    d3dpp.hDeviceWindow = dummyWindow;
+    d3dpp.Windowed      = TRUE;
 
+    // Use software vertex processing for the dummy device — it only exists to
+    // steal the vtable and hardware VP can fail in constrained Vulkan contexts.
     Globals::PD3D->CreateDevice(D3DADAPTER_DEFAULT,
         D3DDEVTYPE_HAL,
-        d3dpp.hDeviceWindow,
-        D3DCREATE_HARDWARE_VERTEXPROCESSING,
+        dummyWindow,
+        D3DCREATE_SOFTWARE_VERTEXPROCESSING,
         &d3dpp,
         &Globals::PD3D_DEVICE);
 
     if (!Globals::PD3D_DEVICE)
     {
         Globals::PD3D->Release();
+        DestroyWindow(dummyWindow);
+        UnregisterClassA("D3D9HookDummy", GetModuleHandleA(nullptr));
         return false;
     }
 
     // We are copying the pTable that we get from the device and its gonna be the size of the pTable
     memcpy(pTable, *reinterpret_cast<void***>(Globals::PD3D_DEVICE), size);
 
-    // Realase everything at the end
+    // Release everything at the end
     Globals::PD3D_DEVICE->Release();
     Globals::PD3D->Release();
+    DestroyWindow(dummyWindow);
+    UnregisterClassA("D3D9HookDummy", GetModuleHandleA(nullptr));
 
     return true;
 }
